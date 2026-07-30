@@ -211,7 +211,7 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { data: settingsData } = useSettingsQuery();
   const [showUsageConfirm, setShowUsageConfirm] = useState(false);
@@ -544,11 +544,15 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
         if (result.success && result.data && result.data.length > 0) {
           const summary = result.data
             .map((d) =>
-              formatUsageDataSummary(d, {
-                invalid: t("usage.invalid"),
-                remaining: t("usage.remaining"),
-                used: t("usage.used"),
-              }),
+              formatUsageDataSummary(
+                d,
+                {
+                  invalid: t("usage.invalid"),
+                  remaining: t("usage.remaining"),
+                  used: t("usage.used"),
+                },
+                i18n.resolvedLanguage,
+              ),
             )
             .join(", ");
           toast.success(`${t("usageScript.testSuccess")}${summary}`, {
@@ -663,11 +667,15 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
       if (result.success && result.data && result.data.length > 0) {
         const summary = result.data
           .map((plan: UsageData) =>
-            formatUsageDataSummary(plan, {
-              invalid: t("usage.invalid"),
-              remaining: t("usage.remaining"),
-              used: t("usage.used"),
-            }),
+            formatUsageDataSummary(
+              plan,
+              {
+                invalid: t("usage.invalid"),
+                remaining: t("usage.remaining"),
+                used: t("usage.used"),
+              },
+              i18n.resolvedLanguage,
+            ),
           )
           .join(", ");
         toast.success(`${t("usageScript.testSuccess")}${summary}`, {

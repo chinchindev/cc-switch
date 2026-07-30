@@ -6,6 +6,7 @@ import { useUsageQuery } from "@/lib/query/queries";
 import { UsageData, Provider } from "@/types";
 import { TierBadge } from "@/components/SubscriptionQuotaFooter";
 import type { QuotaTier } from "@/types/subscription";
+import { formatUsageExtra } from "@/utils/usageDisplay";
 
 interface UsageFooterProps {
   provider: Provider;
@@ -51,7 +52,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   isInConfig = false,
   inline = false,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isTokenPlan =
     provider.meta?.usage_script?.templateType === "token_plan";
 
@@ -260,13 +261,13 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
             </span>
           )}
 
-          {/* 扩展字段 extra */}
+          {/* 扩展字段 extra（重置时间按本机时区展示） */}
           {firstUsage.extra && (
             <span
               className="text-gray-500 dark:text-gray-400 truncate max-w-[150px]"
-              title={firstUsage.extra}
+              title={formatUsageExtra(firstUsage.extra, i18n.resolvedLanguage)}
             >
-              {firstUsage.extra}
+              {formatUsageExtra(firstUsage.extra, i18n.resolvedLanguage)}
             </span>
           )}
         </div>
@@ -314,7 +315,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
 
 // 单个套餐数据展示组件
 const UsagePlanItem: React.FC<{ data: UsageData }> = ({ data }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     planName,
     extra,
@@ -328,6 +329,8 @@ const UsagePlanItem: React.FC<{ data: UsageData }> = ({ data }) => {
 
   // 判断套餐是否失效（isValid 为 false 或未定义时视为有效）
   const isExpired = isValid === false;
+  // extra 常见为 UTC 的重置时间，按本机时区展示
+  const extraText = extra ? formatUsageExtra(extra, i18n.resolvedLanguage) : "";
 
   return (
     <div className="flex items-center gap-3">
@@ -353,12 +356,12 @@ const UsagePlanItem: React.FC<{ data: UsageData }> = ({ data }) => {
         className="text-xs text-gray-500 dark:text-gray-400 min-w-0 flex items-center gap-2"
         style={{ width: "30%" }}
       >
-        {extra && (
+        {extraText && (
           <span
             className={`truncate ${isExpired ? "text-red-500 dark:text-red-400" : ""}`}
-            title={extra}
+            title={extraText}
           >
-            {extra}
+            {extraText}
           </span>
         )}
         {isExpired && (
