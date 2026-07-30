@@ -26,9 +26,11 @@ concurrency:
   group: build-windows-${{ github.ref }}
   cancel-in-progress: true
 
-# push 触发时没有 inputs，回退到 debug。
+# push 触发时没有 inputs：默认 debug（快），提交信息带 [release] 时才走 release。
+# release profile 是 lto + codegen-units=1 + opt-level="s"，编译很慢，不宜作为
+# 每次推送的默认值。
 env:
-  PROFILE: ${{ inputs.profile || 'debug' }}
+  PROFILE: ${{ inputs.profile || (contains(github.event.head_commit.message, '[release]') && 'release' || 'debug') }}
 
 # 发布 prerelease 需要写权限
 permissions:
