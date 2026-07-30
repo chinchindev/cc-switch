@@ -1,0 +1,82 @@
+name: Build Windows exe
+
+# 手动触发的 Windows 构建：产出可直接运行的 exe，不打包安装器。
+# 与 release.yml 的区别：不生成 updater 产物，因此无需 TAURI_SIGNING_PRIVATE_KEY，
+# 在没有仓库 secrets 的 fork 上也能跑通。
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Cargo profile (debug 快很多，release 体积小但编译慢)"
+        type: choice
+        default: debug
+        options:
+          - debug
+          - release
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ inputs.profile }})
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: windows-cargo-${{ inputs.profile }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-${{ inputs.profile }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tauri.conf.json 的 beforeBuildCommand 已包含 build:renderer，无需单独构建前端。
+      # --no-bundle 跳过 NSIS/WiX 与 updater 签名，直接产出裸 exe。
+      - name: Build
+        run: pnpm tauri build --no-bundle ${{ inputs.profile == 'debug' && '--debug' || '' }}
+
+      - name: Collect exe
+        shell: pwsh
+        run: |
+          $dir = "src-tauri/target/${{ inputs.profile }}"
+          $exe = Get-ChildItem -Path $dir -Filter *.exe -File -ErrorAction SilentlyContinue
+          if (-not $exe) {
+            Write-Error "No exe produced in $dir"
+            exit 1
+          }
+          $exe | ForEach-Object { "{0}  ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB) }
+          New-Item -ItemType Directory -Force out | Out-Null
+          $exe | Copy-Item -Destination out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cc-switch-windows-${{ inputs.profile }}
+          path: out/*.exe
+          if-no-files-found: error
+          retention-days: 14
