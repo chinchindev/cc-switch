@@ -30,6 +30,10 @@ concurrency:
 env:
   PROFILE: ${{ inputs.profile || 'debug' }}
 
+# 发布 prerelease 需要写权限
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -91,3 +95,24 @@ jobs:
           path: out/*.exe
           if-no-files-found: error
           retention-days: 14
+
+      # Artifact 下载会被重定向到 *.blob.core.windows.net，该域名在部分企业网络里
+      # 被拦截，点下载只得到一个空白页。Release 资产走 objects.githubusercontent.com，
+      # 与平时下载 Release 同一条链路，可绕开这个限制。
+      - name: Publish exe as prerelease asset
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: dev-${{ env.PROFILE }}-${{ github.run_number }}
+          name: "Dev build ${{ env.PROFILE }} #${{ github.run_number }}"
+          body: |
+            Unsigned development build — not for distribution.
+
+            - commit: ${{ github.sha }}
+            - branch: ${{ github.ref_name }}
+            - profile: ${{ env.PROFILE }}
+
+            Windows may show a SmartScreen warning because the binary is unsigned.
+          prerelease: true
+          files: out/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
