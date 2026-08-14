@@ -223,6 +223,7 @@ pub fn load_messages_sqlite(source: &str) -> Result<Vec<SessionMessage>, String>
             role,
             content,
             ts: ts_ms,
+            usage: None,
         });
     }
 
@@ -478,7 +479,12 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
         }
 
         let ts = ts_val.and_then(parse_timestamp_to_ms);
-        messages.push(SessionMessage { role, content, ts });
+        messages.push(SessionMessage {
+            role,
+            content,
+            ts,
+            usage: None,
+        });
     }
 
     Ok(messages)

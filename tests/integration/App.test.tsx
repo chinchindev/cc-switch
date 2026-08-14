@@ -164,6 +164,13 @@ vi.mock("@/components/UpdateBadge", () => ({
   ),
 }));
 
+// Renders unconditionally in App and opens whenever the mocked settings lack
+// firstRunNoticeConfirmed: true. Not what these provider-flow tests cover,
+// and its Radix Dialog/focus-trap machinery adds unrelated async noise.
+vi.mock("@/components/FirstRunNoticeDialog", () => ({
+  FirstRunNoticeDialog: () => null,
+}));
+
 vi.mock("@/components/mcp/McpPanel", () => ({
   default: ({ open, onOpenChange }: any) =>
     open ? (
@@ -251,7 +258,10 @@ describe("App integration with MSW", () => {
 
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalled();
-  }, 10_000);
+    // This test drives several sequential fireEvent + waitFor round-trips
+    // through real hooks/MSW; the default 5000ms vitest test timeout is
+    // consistently marginal (observed ~5.6s total), not a hang.
+  }, 20000);
 
   it("shows toast when auto sync fails in background", async () => {
     const { default: App } = await import("@/App");

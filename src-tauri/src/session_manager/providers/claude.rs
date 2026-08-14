@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::config::get_claude_config_dir;
-use crate::session_manager::{SessionMessage, SessionMeta};
+use crate::session_manager::{SessionMessage, SessionMessageUsage, SessionMeta};
 
 use super::utils::{
     extract_text, parse_timestamp_to_ms, path_basename, read_head_tail_lines, truncate_summary,
@@ -79,10 +79,47 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
 
         let ts = value.get("timestamp").and_then(parse_timestamp_to_ms);
 
-        messages.push(SessionMessage { role, content, ts });
+        let usage = parse_claude_usage(message);
+
+        messages.push(SessionMessage {
+            role,
+            content,
+            ts,
+            usage,
+        });
     }
 
     Ok(messages)
+}
+
+fn parse_claude_usage(message: &Value) -> Option<SessionMessageUsage> {
+    let usage = message.get("usage")?;
+    let input_tokens = usage
+        .get("input_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let cache_creation_tokens = usage
+        .get("cache_creation_input_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let cache_read_tokens = usage
+        .get("cache_read_input_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let output_tokens = usage
+        .get("output_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let context_tokens = input_tokens
+        .saturating_add(cache_creation_tokens)
+        .saturating_add(cache_read_tokens)
+        .saturating_add(output_tokens);
+
+    (context_tokens > 0).then_some(SessionMessageUsage {
+        context_tokens,
+        output_tokens,
+        context_window: None,
+    })
 }
 
 pub fn delete_session(_root: &Path, path: &Path, session_id: &str) -> Result<bool, String> {
@@ -188,6 +225,7 @@ fn parse_session(path: &Path) -> Option<SessionMeta> {
     let mut last_active_at: Option<i64> = None;
     let mut summary: Option<String> = None;
     let mut custom_title: Option<String> = None;
+    let mut ai_title: Option<String> = None;
 
     for line in tail.iter().rev() {
         let value: Value = match serde_json::from_str(line) {
@@ -203,6 +241,13 @@ fn parse_session(path: &Path) -> Option<SessionMeta> {
         {
             custom_title = value
                 .get("customTitle")
+                .and_then(Value::as_str)
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+        }
+        if ai_title.is_none() && value.get("type").and_then(Value::as_str) == Some("ai-title") {
+            ai_title = value
+                .get("aiTitle")
                 .and_then(Value::as_str)
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty());
@@ -226,9 +271,10 @@ fn parse_session(path: &Path) -> Option<SessionMeta> {
     let session_id = session_id.or_else(|| infer_session_id_from_filename(path));
     let session_id = session_id?;
 
-    // Title priority: custom-title > first user message > directory basename
+    // Match Claude CLI title priority: explicit title > generated AI title > fallback.
     let title = custom_title
         .map(|t| truncate_summary(&t, TITLE_MAX_CHARS))
+        .or_else(|| ai_title.map(|t| truncate_summary(&t, TITLE_MAX_CHARS)))
         .or_else(|| first_user_message.map(|t| truncate_summary(&t, TITLE_MAX_CHARS)))
         .or_else(|| {
             project_dir
@@ -370,6 +416,23 @@ mod tests {
     }
 
     #[test]
+    fn load_messages_includes_context_usage_for_assistant_responses() {
+        let temp = tempdir().expect("tempdir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::write(
+            &path,
+            "{\"message\":{\"role\":\"assistant\",\"content\":\"Done.\",\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":20,\"cache_read_input_tokens\":300,\"output_tokens\":40}},\"timestamp\":\"2026-03-06T10:00:00Z\"}\n",
+        )
+        .expect("write");
+
+        let msgs = load_messages(&path).expect("load");
+        let usage = msgs[0].usage.as_ref().expect("usage");
+        assert_eq!(usage.context_tokens, 370);
+        assert_eq!(usage.output_tokens, 40);
+        assert_eq!(usage.context_window, None);
+    }
+
+    #[test]
     fn load_messages_mixed_user_tool_result_and_text_stays_user() {
         let temp = tempdir().expect("tempdir");
         let path = temp.path().join("session.jsonl");
@@ -420,6 +483,24 @@ mod tests {
 
         let meta = parse_session(&path).unwrap();
         assert_eq!(meta.title.as_deref(), Some("fix-login-bug"));
+    }
+
+    #[test]
+    fn parse_session_uses_latest_ai_title_like_claude_cli() {
+        let temp = tempdir().expect("tempdir");
+        let path = temp.path().join("session-ai-title.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                "{\"sessionId\":\"session-ai-title\",\"cwd\":\"/tmp/project\",\"timestamp\":\"2026-03-06T10:00:00Z\"}\n",
+                "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"raw first prompt\"},\"sessionId\":\"session-ai-title\",\"timestamp\":\"2026-03-06T10:01:00Z\",\"cwd\":\"/tmp/project\"}\n",
+                "{\"type\":\"ai-title\",\"aiTitle\":\"Generated CLI title\",\"sessionId\":\"session-ai-title\"}\n",
+            ),
+        )
+        .expect("write session");
+
+        let meta = parse_session(&path).expect("metadata");
+        assert_eq!(meta.title.as_deref(), Some("Generated CLI title"));
     }
 
     #[test]

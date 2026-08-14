@@ -342,7 +342,7 @@ export function ProviderActions({
           variant={buttonState.variant}
           onClick={handleMainButtonClick}
           disabled={buttonState.disabled}
-          className={cn("w-[4.5rem] px-2.5", buttonState.className)}
+          className={cn("min-w-[4.5rem] px-2.5", buttonState.className)}
         >
           {buttonState.icon}
           {buttonState.text}

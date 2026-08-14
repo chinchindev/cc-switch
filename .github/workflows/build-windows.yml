@@ -1,0 +1,240 @@
+name: Build development binaries
+
+# Build unsigned development binaries without repository signing secrets.
+# Release builds are published together after both platforms pass verification.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Cargo profile (debug is faster; release is optimized)"
+        type: choice
+        default: debug
+        options:
+          - debug
+          - release
+  push:
+    branches:
+      - "fix/**"
+      - "feat/**"
+      - "ci/**"
+
+concurrency:
+  group: build-development-${{ github.ref }}
+  cancel-in-progress: true
+
+# Pushes default to debug. Include [release] in the commit message to publish
+# optimized Windows and Apple Silicon development builds.
+env:
+  PROFILE: ${{ inputs.profile || (contains(github.event.head_commit.message, '[release]') && 'release' || 'debug') }}
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: windows-cargo-${{ env.PROFILE }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-${{ env.PROFILE }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build Windows executable
+        run: pnpm tauri build --no-bundle ${{ env.PROFILE == 'debug' && '--debug' || '' }}
+
+      - name: Collect executable and zip it
+        shell: pwsh
+        run: |
+          $dir = "src-tauri/target/${{ env.PROFILE }}"
+          $exe = Get-ChildItem -Path $dir -Filter *.exe -File -ErrorAction SilentlyContinue
+          if (-not $exe) {
+            Write-Error "No exe produced in $dir"
+            exit 1
+          }
+          $exe | ForEach-Object { "{0}  ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB) }
+          New-Item -ItemType Directory -Force out | Out-Null
+          $exe | Copy-Item -Destination out
+
+          $zip = "out/cc-switch-windows-${{ env.PROFILE }}.zip"
+          Compress-Archive -Path "out/*.exe" -DestinationPath $zip -Force
+          "zipped -> {0}  ({1:N1} MB)" -f $zip, ((Get-Item $zip).Length / 1MB)
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: cc-switch-windows-${{ env.PROFILE }}
+          path: out/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows release asset
+        if: env.PROFILE == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-windows
+          path: out/cc-switch-windows-release.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-macos-arm64:
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: macos-arm64-cargo-${{ env.PROFILE }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: macos-arm64-cargo-${{ env.PROFILE }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --target aarch64-apple-darwin
+
+      - name: Build debug Apple Silicon executable
+        if: env.PROFILE == 'debug'
+        run: >-
+          pnpm tauri build
+          --target aarch64-apple-darwin
+          --no-bundle
+          --debug
+          --config src-tauri/tauri.dev-macos.conf.json
+
+      - name: Build release Apple Silicon DMG
+        if: env.PROFILE == 'release'
+        run: >-
+          pnpm tauri build
+          --target aarch64-apple-darwin
+          --bundles dmg
+          --config src-tauri/tauri.dev-macos.conf.json
+
+      - name: Verify and collect Apple Silicon release
+        if: env.PROFILE == 'release'
+        shell: bash
+        run: |
+          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -type d -name '*.app' -prune | head -n 1)
+          DMG_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/dmg -type f -name '*.dmg' | head -n 1)
+
+          test -n "$APP_PATH" || { echo "No .app bundle produced"; exit 1; }
+          test -n "$DMG_PATH" || { echo "No .dmg produced"; exit 1; }
+
+          EXECUTABLE=$(find "$APP_PATH/Contents/MacOS" -type f | head -n 1)
+          test -n "$EXECUTABLE" || { echo "No app executable produced"; exit 1; }
+
+          ARCH_INFO=$(file "$EXECUTABLE")
+          echo "$ARCH_INFO"
+          case "$ARCH_INFO" in
+            *arm64*) ;;
+            *) echo "Expected an arm64 executable"; exit 1 ;;
+          esac
+
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -dv --verbose=4 "$APP_PATH"
+
+          mkdir -p out
+          cp "$DMG_PATH" out/cc-switch-macos-arm64-release.dmg
+
+      - name: Upload macOS release asset
+        if: env.PROFILE == 'release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-macos-arm64
+          path: out/cc-switch-macos-arm64-release.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    if: >-
+      inputs.profile == 'release' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
+    needs:
+      - build-windows
+      - build-macos-arm64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish development prerelease
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: dev-${{ env.PROFILE }}-${{ github.run_number }}
+          name: "Dev build ${{ env.PROFILE }} #${{ github.run_number }}"
+          body: |
+            Development build — not for distribution.
+
+            - commit: ${{ github.sha }}
+            - branch: ${{ github.ref_name }}
+            - profile: ${{ env.PROFILE }}
+            - macOS architecture: Apple Silicon arm64 (M1, M2, M3, M4)
+            - macOS signing: ad-hoc signed, not notarized
+
+            Windows: unzip the archive, then expect a SmartScreen prompt.
+
+            macOS: move CC Switch.app from the DMG to Applications, then run:
+            xattr -dr com.apple.quarantine "/Applications/CC Switch.app"
+            open "/Applications/CC Switch.app"
+          prerelease: true
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

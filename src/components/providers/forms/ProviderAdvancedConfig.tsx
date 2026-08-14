@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, Coins } from "lucide-react";
+import { ChevronDown, ChevronRight, Coins, Wallet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -20,14 +20,23 @@ interface ProviderPricingConfig {
   pricingModelSource: PricingModelSourceOption;
 }
 
+export interface ProviderBudgetConfig {
+  limitDailyUsd?: string;
+  limitMonthlyUsd?: string;
+}
+
 interface ProviderAdvancedConfigProps {
   pricingConfig: ProviderPricingConfig;
   onPricingConfigChange: (config: ProviderPricingConfig) => void;
+  budgetConfig: ProviderBudgetConfig;
+  onBudgetConfigChange: (config: ProviderBudgetConfig) => void;
 }
 
 export function ProviderAdvancedConfig({
   pricingConfig,
   onPricingConfigChange,
+  budgetConfig,
+  onBudgetConfigChange,
 }: ProviderAdvancedConfigProps) {
   const { t } = useTranslation();
   const [isPricingConfigOpen, setIsPricingConfigOpen] = useState(
@@ -173,6 +182,74 @@ export function ProviderAdvancedConfig({
                   })}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 预算限额 */}
+      <div className="rounded-lg border border-border/50 bg-muted/20">
+        <div className="flex items-center gap-3 p-4">
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">
+            {t("providerAdvanced.budgetConfig", { defaultValue: "预算限额" })}
+          </span>
+        </div>
+        <div className="border-t border-border/50 p-4 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t("providerAdvanced.budgetConfigDesc", {
+              defaultValue:
+                "设置该供应商的消费上限，超出时在列表中显示提醒（不会阻止请求）。",
+            })}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="limit-daily-usd">
+                {t("providerAdvanced.limitDailyUsd", {
+                  defaultValue: "每日限额 (USD)",
+                })}
+              </Label>
+              <Input
+                id="limit-daily-usd"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                value={budgetConfig.limitDailyUsd || ""}
+                onChange={(e) =>
+                  onBudgetConfigChange({
+                    ...budgetConfig,
+                    limitDailyUsd: e.target.value || undefined,
+                  })
+                }
+                placeholder={t("providerAdvanced.limitDailyUsdPlaceholder", {
+                  defaultValue: "留空表示不限制",
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="limit-monthly-usd">
+                {t("providerAdvanced.limitMonthlyUsd", {
+                  defaultValue: "每月限额 (USD)",
+                })}
+              </Label>
+              <Input
+                id="limit-monthly-usd"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                value={budgetConfig.limitMonthlyUsd || ""}
+                onChange={(e) =>
+                  onBudgetConfigChange({
+                    ...budgetConfig,
+                    limitMonthlyUsd: e.target.value || undefined,
+                  })
+                }
+                placeholder={t("providerAdvanced.limitMonthlyUsdPlaceholder", {
+                  defaultValue: "留空表示不限制",
+                })}
+              />
             </div>
           </div>
         </div>

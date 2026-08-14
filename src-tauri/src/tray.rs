@@ -66,7 +66,7 @@ pub struct TrayTexts {
 /// 镜像前端 `i18n/getInitialLanguage` 的判定顺序，确保首次安装
 /// （`settings.language` 尚未写入）时托盘语言与界面语言一致：
 /// 繁中系统（zh-TW/HK/MO/Hant）→ `zh-TW`，其余 zh → `zh`，
-/// 日文 → `ja`，英文 → `en`，未知区域回退到 `zh`（与前端默认一致）。
+/// 日文 → `ja`，英文 → `en`，越南语 → `vi`，未知区域回退到 `zh`（与前端默认一致）。
 fn map_locale_to_tray_language(locale: &str) -> &'static str {
     let locale = locale.to_lowercase();
     if locale == "zh" {
@@ -83,6 +83,8 @@ fn map_locale_to_tray_language(locale: &str) -> &'static str {
         "ja"
     } else if locale.starts_with("en") {
         "en"
+    } else if locale.starts_with("vi") {
+        "vi"
     } else {
         "zh"
     }
@@ -128,6 +130,16 @@ impl TrayTexts {
                 _auto_label: "自動 (故障轉移)",
                 projects_label: "專案",
                 no_project_label: "不使用專案",
+            },
+            "vi" => Self {
+                show_main: "Mở cửa sổ chính",
+                open_website: "Mở trang chủ",
+                no_providers_label: "(chưa có provider)",
+                lightweight_mode: "Chế độ nhẹ",
+                quit: "Thoát",
+                _auto_label: "Tự động (failover)",
+                projects_label: "Dự án",
+                no_project_label: "Không dùng dự án",
             },
             _ => Self {
                 show_main: "打开主界面",
@@ -1178,6 +1190,18 @@ mod tests {
         assert_eq!(map_locale_to_tray_language("ja"), "ja");
         assert_eq!(map_locale_to_tray_language("en-US"), "en");
         assert_eq!(map_locale_to_tray_language("en"), "en");
+    }
+
+    #[test]
+    fn locale_maps_vietnamese_variants_to_vi() {
+        use super::map_locale_to_tray_language;
+        for locale in ["vi", "vi-VN", "vi-vn", "vi_VN"] {
+            assert_eq!(
+                map_locale_to_tray_language(locale),
+                "vi",
+                "expected {locale} -> vi"
+            );
+        }
     }
 
     #[test]

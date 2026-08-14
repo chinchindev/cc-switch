@@ -106,6 +106,7 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
             role: role.to_string(),
             content,
             ts,
+            usage: None,
         });
     }
 

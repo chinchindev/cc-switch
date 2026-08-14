@@ -312,7 +312,7 @@ export function PricingConfigPanel() {
                         }
                         disabled={isSaving}
                       >
-                        <SelectTrigger className="h-7 w-28">
+                        <SelectTrigger className="h-7 min-w-28">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

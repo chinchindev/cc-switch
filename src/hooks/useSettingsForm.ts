@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useSettingsQuery } from "@/lib/query";
 import type { Settings } from "@/types";
 
-type Language = "zh" | "zh-TW" | "en" | "ja";
+export type Language = "zh" | "zh-TW" | "en" | "ja" | "vi";
 
 export type SettingsFormState = Omit<Settings, "language"> & {
   language: Language;
 };
 
-const normalizeLanguage = (lang?: string | null): Language => {
+export const normalizeLanguage = (lang?: string | null): Language => {
   if (!lang) return "zh";
   const normalized = lang.toLowerCase().replace(/_/g, "-");
 
@@ -26,8 +26,12 @@ const normalizeLanguage = (lang?: string | null): Language => {
     return "zh-TW";
   }
 
-  if (normalized === "en" || normalized === "ja") {
+  if (normalized === "en" || normalized === "ja" || normalized === "vi") {
     return normalized;
+  }
+
+  if (normalized.startsWith("vi")) {
+    return "vi";
   }
 
   if (normalized.startsWith("zh")) {
@@ -37,11 +41,14 @@ const normalizeLanguage = (lang?: string | null): Language => {
   return "zh";
 };
 
-const isSupportedLanguage = (lang?: string | null): boolean => {
+export const isSupportedLanguage = (lang?: string | null): boolean => {
   if (!lang) return false;
   const normalized = lang.toLowerCase().replace(/_/g, "-");
   return (
-    normalized === "en" || normalized === "ja" || normalized.startsWith("zh")
+    normalized === "en" ||
+    normalized === "ja" ||
+    normalized.startsWith("vi") ||
+    normalized.startsWith("zh")
   );
 };
 
@@ -131,10 +138,31 @@ export function useSettingsForm(): UseSettingsFormResult {
     setSettingsState(normalized);
     initialLanguageRef.current = normalizedLanguage;
     syncLanguage(normalizedLanguage);
-  }, [data, readPersistedLanguage, syncLanguage]);
+    // readPersistedLanguage/syncLanguage intentionally omitted: they wrap
+    // i18n from useTranslation(), whose reference churns for a render or two
+    // right after any changeLanguage() call. Depending on them here re-fires
+    // this effect and clobbers local edits (resetSettings/updateSettings)
+    // with stale server `data`. Both read i18n.language live, so using the
+    // closure from whichever render last saw a new `data` is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const updateSettings = useCallback(
     (updates: Partial<SettingsFormState>) => {
+      // syncLanguage (i18n.changeLanguage) is a side effect and must run
+      // outside the setState updater below — React may invoke that updater
+      // more than once per commit, and in production changeLanguage emits
+      // 'languageChanged', which forces a render of every useTranslation()
+      // consumer; doing that from inside another component's state updater
+      // triggers React's "Cannot update a component while rendering a
+      // different component" warning.
+      const normalizedLanguage = updates.language
+        ? normalizeLanguage(updates.language)
+        : undefined;
+      if (normalizedLanguage) {
+        syncLanguage(normalizedLanguage);
+      }
+
       setSettingsState((prev) => {
         const base =
           prev ??
@@ -154,10 +182,8 @@ export function useSettingsForm(): UseSettingsFormResult {
           ...updates,
         };
 
-        if (updates.language) {
-          const normalized = normalizeLanguage(updates.language);
-          next.language = normalized;
-          syncLanguage(normalized);
+        if (normalizedLanguage) {
+          next.language = normalizedLanguage;
         }
 
         return next;

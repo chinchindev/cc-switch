@@ -332,6 +332,14 @@ function ProviderFormFull({
     ),
   }));
 
+  const [budgetConfig, setBudgetConfig] = useState<{
+    limitDailyUsd?: string;
+    limitMonthlyUsd?: string;
+  }>(() => ({
+    limitDailyUsd: initialData?.meta?.limitDailyUsd,
+    limitMonthlyUsd: initialData?.meta?.limitMonthlyUsd,
+  }));
+
   const { category } = useProviderCategory({
     appId,
     selectedPresetId,
@@ -361,6 +369,10 @@ function ProviderFormFull({
       pricingModelSource: normalizePricingSource(
         initialData?.meta?.pricingModelSource,
       ),
+    });
+    setBudgetConfig({
+      limitDailyUsd: initialData?.meta?.limitDailyUsd,
+      limitMonthlyUsd: initialData?.meta?.limitMonthlyUsd,
     });
     setCodexChatReasoning(initialData?.meta?.codexChatReasoning ?? {});
     setPromptCacheRouting(initialData?.meta?.promptCacheRouting ?? "auto");
@@ -1075,6 +1087,25 @@ function ProviderFormFull({
       return;
     }
 
+    const limitDailyUsd = budgetConfig.limitDailyUsd?.trim();
+    if (limitDailyUsd && !isNonNegativeDecimalString(limitDailyUsd)) {
+      toast.error(
+        t("providerAdvanced.limitDailyUsdInvalid", {
+          defaultValue: "每日限额必须为非负数",
+        }),
+      );
+      return;
+    }
+    const limitMonthlyUsd = budgetConfig.limitMonthlyUsd?.trim();
+    if (limitMonthlyUsd && !isNonNegativeDecimalString(limitMonthlyUsd)) {
+      toast.error(
+        t("providerAdvanced.limitMonthlyUsdInvalid", {
+          defaultValue: "每月限额必须为非负数",
+        }),
+      );
+      return;
+    }
+
     // opencode / openclaw / hermes: providerKey 相关
     // A 类（空）归到 issues；B 类（正则不合法 / 重复 / 状态加载中）仍硬拒绝
     const keyPattern = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -1609,6 +1640,8 @@ function ProviderFormFull({
         pricingConfig.enabled && pricingConfig.pricingModelSource !== "inherit"
           ? pricingConfig.pricingModelSource
           : undefined,
+      limitDailyUsd: budgetConfig.limitDailyUsd?.trim() || undefined,
+      limitMonthlyUsd: budgetConfig.limitMonthlyUsd?.trim() || undefined,
       apiFormat:
         appId === "claude" && category !== "official"
           ? isXaiOauthProvider
@@ -2602,6 +2635,8 @@ function ProviderFormFull({
               <ProviderAdvancedConfig
                 pricingConfig={pricingConfig}
                 onPricingConfigChange={setPricingConfig}
+                budgetConfig={budgetConfig}
+                onBudgetConfigChange={setBudgetConfig}
               />
             )}
 

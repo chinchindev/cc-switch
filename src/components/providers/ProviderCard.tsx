@@ -18,6 +18,7 @@ import XaiOauthQuotaFooter from "@/components/XaiOauthQuotaFooter";
 import { PROVIDER_TYPES, TEMPLATE_TYPES } from "@/config/constants";
 import { isHermesReadOnlyProvider } from "@/config/hermesProviderPresets";
 import { ProviderHealthBadge } from "@/components/providers/ProviderHealthBadge";
+import { ProviderBudgetBadge } from "@/components/providers/ProviderBudgetBadge";
 import { FailoverPriorityBadge } from "@/components/providers/FailoverPriorityBadge";
 import {
   extractCodexBaseUrl,
@@ -28,6 +29,7 @@ import {
   providerNeedsRouting,
 } from "@/utils/providerCapabilities";
 import { useProviderHealth } from "@/lib/query/failover";
+import { useProviderLimits } from "@/lib/query/usage";
 import { useUsageQuery } from "@/lib/query/queries";
 import { resolveProviderIcon } from "@/utils/providerIcon";
 
@@ -175,6 +177,13 @@ export function ProviderCard({
   const isAdditiveMode = appId === "opencode" && !isAnyOmo;
 
   const { data: health } = useProviderHealth(provider.id, appId);
+
+  const hasBudgetLimit = !!(
+    provider.meta?.limitDailyUsd || provider.meta?.limitMonthlyUsd
+  );
+  const { data: budgetStatus } = useProviderLimits(provider.id, appId, {
+    enabled: hasBudgetLimit,
+  });
 
   const fallbackUrlText = t("provider.notConfigured", {
     defaultValue: "未配置接口地址",
@@ -436,6 +445,17 @@ export function ProviderCard({
                 <ProviderHealthBadge
                   consecutiveFailures={health.consecutive_failures}
                   isHealthy={health.is_healthy}
+                />
+              )}
+
+              {budgetStatus && (
+                <ProviderBudgetBadge
+                  dailyUsage={budgetStatus.dailyUsage}
+                  dailyLimit={budgetStatus.dailyLimit}
+                  dailyExceeded={budgetStatus.dailyExceeded}
+                  monthlyUsage={budgetStatus.monthlyUsage}
+                  monthlyLimit={budgetStatus.monthlyLimit}
+                  monthlyExceeded={budgetStatus.monthlyExceeded}
                 />
               )}
 

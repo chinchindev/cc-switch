@@ -19,6 +19,12 @@ beforeEach(() => {
     .spyOn(i18n, "changeLanguage")
     .mockImplementation(async (lang?: string) => {
       (i18n as any).language = lang;
+      // Real i18next emits this on every language change; react-i18next's
+      // useTranslation() clones a memoized snapshot of the instance keyed on
+      // this event (see useTranslation.js's createI18nWrapper), so skipping
+      // it here would leave the hook reading a stale i18n.language until an
+      // unrelated re-render happened to refresh the memo.
+      i18n.emit("languageChanged", lang);
       return i18n.t;
     });
 });
@@ -161,7 +167,14 @@ describe("useSettingsForm Hook", () => {
     });
 
     changeLanguageSpy.mockClear();
-    (i18n as any).language = "zh";
+    act(() => {
+      (i18n as any).language = "zh";
+      // Simulating an external language change must emit the same event the
+      // real i18next.changeLanguage() would, otherwise react-i18next's
+      // memoized i18n snapshot (see the mock above) stays stale and
+      // resetSettings's syncLanguage() call below reads the old language.
+      i18n.emit("languageChanged", "zh");
+    });
 
     act(() => {
       result.current.resetSettings({

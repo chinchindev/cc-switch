@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::codex_config::{get_codex_config_dir, read_codex_config_text};
 use crate::codex_state_db::codex_state_db_paths;
-use crate::session_manager::{SessionMessage, SessionMeta};
+use crate::session_manager::{SessionMessage, SessionMessageUsage, SessionMeta};
 
 use super::utils::{
     extract_text, parse_timestamp_to_ms, path_basename, read_head_tail_lines, truncate_summary,
@@ -204,7 +204,8 @@ fn load_thread_titles_from_db(db_path: &Path) -> HashMap<String, String> {
 pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open session file: {e}"))?;
     let reader = BufReader::new(file);
-    let mut messages = Vec::new();
+    let mut messages: Vec<SessionMessage> = Vec::new();
+    let mut last_assistant_message_index: Option<usize> = None;
 
     for line in reader.lines() {
         let line = match line {
@@ -216,7 +217,17 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
             Err(_) => continue,
         };
 
-        if value.get("type").and_then(Value::as_str) != Some("response_item") {
+        let record_type = value.get("type").and_then(Value::as_str);
+        if record_type == Some("event_msg") {
+            if let Some(usage) = value.get("payload").and_then(parse_codex_usage) {
+                if let Some(index) = last_assistant_message_index {
+                    messages[index].usage = Some(usage);
+                }
+            }
+            continue;
+        }
+
+        if record_type != Some("response_item") {
             continue;
         }
 
@@ -262,10 +273,40 @@ pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
 
         let ts = value.get("timestamp").and_then(parse_timestamp_to_ms);
 
-        messages.push(SessionMessage { role, content, ts });
+        let is_assistant = role == "assistant";
+        messages.push(SessionMessage {
+            role,
+            content,
+            ts,
+            usage: None,
+        });
+        if is_assistant {
+            last_assistant_message_index = Some(messages.len() - 1);
+        }
     }
 
     Ok(messages)
+}
+
+fn parse_codex_usage(payload: &Value) -> Option<SessionMessageUsage> {
+    if payload.get("type").and_then(Value::as_str) != Some("token_count") {
+        return None;
+    }
+
+    let info = payload.get("info")?;
+    let last_usage = info.get("last_token_usage")?;
+    let input_tokens = last_usage.get("input_tokens").and_then(Value::as_u64)?;
+    let output_tokens = last_usage
+        .get("output_tokens")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    let context_tokens = input_tokens.saturating_add(output_tokens);
+
+    (context_tokens > 0).then_some(SessionMessageUsage {
+        context_tokens,
+        output_tokens,
+        context_window: info.get("model_context_window").and_then(Value::as_u64),
+    })
 }
 
 pub fn delete_session(_root: &Path, path: &Path, session_id: &str) -> Result<bool, String> {
@@ -993,5 +1034,29 @@ mod tests {
 
         assert_eq!(msgs[3].role, "assistant");
         assert_eq!(msgs[3].content, "Done.");
+    }
+
+    #[test]
+    fn load_messages_attaches_context_usage_to_the_assistant_turn() {
+        let temp = tempdir().expect("tempdir");
+        let path = temp.path().join("session.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                "{\"timestamp\":\"2026-03-06T21:50:12Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"test-id\",\"cwd\":\"/tmp\"}}\n",
+                "{\"timestamp\":\"2026-03-06T21:50:13Z\",\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":\"hello\"}}\n",
+                "{\"timestamp\":\"2026-03-06T21:50:14Z\",\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"assistant\",\"content\":\"Done.\"}}\n",
+                "{\"timestamp\":\"2026-03-06T21:50:15Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"last_token_usage\":{\"input_tokens\":45000,\"cached_input_tokens\":41000,\"output_tokens\":500,\"reasoning_output_tokens\":100,\"total_tokens\":45500},\"model_context_window\":258400}}}\n",
+            ),
+        )
+        .expect("write session");
+
+        let msgs = load_messages(&path).expect("load");
+        assert_eq!(msgs.len(), 2);
+        assert!(msgs[0].usage.is_none());
+        let usage = msgs[1].usage.as_ref().expect("assistant usage");
+        assert_eq!(usage.context_tokens, 45_500);
+        assert_eq!(usage.output_tokens, 500);
+        assert_eq!(usage.context_window, Some(258_400));
     }
 }
