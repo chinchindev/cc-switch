@@ -160,7 +160,7 @@ jobs:
         run: >-
           pnpm tauri build
           --target aarch64-apple-darwin
-          --bundles dmg
+          --bundles app,dmg
           --config src-tauri/tauri.dev-macos.conf.json
 
       - name: Verify and collect Apple Silicon release
