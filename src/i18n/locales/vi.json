@@ -175,7 +175,9 @@
         "apiKeyPlaceholder": "Nhập Gemini API Key"
       }
     },
-    "duplicateLiveIdsLoadFailed": "Không đọc được định danh provider từ config, vui lòng sửa config và thử lại"
+    "duplicateLiveIdsLoadFailed": "Không đọc được định danh provider từ config, vui lòng sửa config và thử lại",
+    "needsRouting": "Cần Routing",
+    "noRoutingSupport": "Không hỗ trợ Routing"
   },
   "claudeCode": {
     "needsRouting": "Cần Routing",
@@ -185,7 +187,15 @@
     "needsRouting": "Cần Routing",
     "noRoutingSupport": "Không hỗ trợ Routing",
     "officialRouting": "Routing tài khoản chính thức",
-    "nativeLogin": "Đăng nhập Codex"
+    "nativeLogin": "Đăng nhập Codex",
+    "followCodexLogin": "Theo đăng nhập Codex",
+    "followCodexLoginDescription": "Tài khoản thay đổi theo phiên đăng nhập Codex CLI hiện tại",
+    "openAiAccount": "Tài khoản OpenAI",
+    "accountNotSelected": "Chưa chọn tài khoản",
+    "chooseAccount": "Chọn tài khoản",
+    "accountStatusUnavailable": "Không thể tải thông tin tài khoản",
+    "boundAccountUnavailable": "Tài khoản đã liên kết không khả dụng",
+    "accountLoading": "Đang tải tài khoản…"
   },
   "claudeDesktop": {
     "modelConfigTitle": "Cấu hình model",
@@ -280,7 +290,9 @@
     "windowControlFailed": "Điều khiển cửa sổ thất bại: {{error}}",
     "officialBlockedByProxy": "Không thể chuyển sang provider chính thức khi proxy nội bộ đang hoạt động. Dùng proxy với API chính thức có thể khiến tài khoản bị khóa.",
     "proxyOfficialWarning": "Provider hiện tại {{name}} là chính thức. Nên chuyển sang provider bên thứ ba trước khi dùng proxy nội bộ.",
-    "proxyReasonClaudeDesktop": "Đang dùng chế độ local routing của Claude Desktop"
+    "proxyReasonClaudeDesktop": "Đang dùng chế độ local routing của Claude Desktop",
+    "removeFromConfigFailed": "Không thể xóa nhà cung cấp",
+    "codexAuthCleanupFailed": "Đã chuyển thành công, nhưng không thể xóa auth.json — thông tin đăng nhập chính thức vẫn còn trên đĩa; hãy xóa auth.json trong thư mục cấu hình Codex để loại bỏ"
   },
   "confirm": {
     "deleteProvider": "Xóa provider",
@@ -323,7 +335,8 @@
       "title": "Về Common Config",
       "message": "\"Common Config Snippet\" cho phép chia sẻ plugin, biến môi trường và các cài đặt khác giữa các provider khác nhau — để không bị mất khi chuyển provider.\n\nCách dùng:\n① Sửa một provider → bấm \"Edit Common Config\" → \"Extract from Editor\"\n② Khi tạo provider mới, tick \"Apply Common Config\" (mặc định đã bật)\n\nNếu vừa cài plugin hoặc hook mới, hãy extract lại common config để đồng bộ.",
       "confirm": "Đã hiểu"
-    }
+    },
+    "piDefaultProviderWarning": "Mặc định toàn cục của Pi hiện đang trỏ đến nhà cung cấp này. Nếu tiếp tục, Pi sẽ thử một model khả dụng khác; dùng /model để chọn model khác hoặc /login để đăng nhập nhà cung cấp khác."
   },
   "settings": {
     "title": "Cài đặt",
@@ -742,7 +755,8 @@
           "ghostty": "Ghostty",
           "wezterm": "WezTerm",
           "kaku": "Kaku",
-          "warp": "Warp"
+          "warp": "Warp",
+          "otty": "Otty"
         },
         "windows": {
           "cmd": "Command Prompt",
@@ -883,7 +897,10 @@
       "defaultCostMultiplierRequired": "Hệ số nhân mặc định là bắt buộc",
       "defaultCostMultiplierInvalid": "Định dạng hệ số nhân không hợp lệ"
     },
-    "saveFailedGeneric": "Lưu thất bại, vui lòng thử lại"
+    "saveFailedGeneric": "Lưu thất bại, vui lòng thử lại",
+    "piConfigDir": "Thư mục cấu hình Pi",
+    "piConfigDirDescription": "Ghi đè thư mục cấu hình Pi (models.json, file hướng dẫn, prompts, skills và sessions).",
+    "browsePlaceholderPi": "vd: /home/<tên-người-dùng>/.pi/agent"
   },
   "apps": {
     "claude": "Claude",
@@ -895,7 +912,8 @@
     "grokbuild": "Grok Build",
     "opencode": "OpenCode",
     "openclaw": "OpenClaw",
-    "hermes": "Hermes"
+    "hermes": "Hermes",
+    "pi": "Pi"
   },
   "appSwitcher": {
     "more": "Thêm ứng dụng"
@@ -906,7 +924,12 @@
     "contextWindowInvalid": "Context window phải là số nguyên dương",
     "profile": "Client model profile",
     "rawConfig": "config.toml",
-    "invalidToml": "config.toml không hợp lệ: {{error}}"
+    "invalidToml": "config.toml không hợp lệ: {{error}}",
+    "defaultModelPlaceholder": "vd: grok-4.5",
+    "defaultModelHint": "Model mà Grok Build yêu cầu theo mặc định; có thể thay đổi bất cứ lúc nào mà không cần chờ cập nhật preset.",
+    "advancedSectionHint": "Bao gồm định dạng upstream, ghi đè reasoning và User-Agent tùy chỉnh. Các nhà cung cấp dùng giao thức Chat Completions hoặc Anthropic Messages cần bật routing takeover.",
+    "reasoningEffortHint": "Bật khi upstream hỗ trợ điều chỉnh độ sâu suy luận như low/high/max. Bật tùy chọn này cũng bật chế độ thinking và chuyển đổi reasoning effort của request thành tham số Chat của upstream.",
+    "maxOutputTokensHint": "Giới hạn mặc định 8192 có thể cắt bớt các phản hồi dài hoặc dùng nhiều thinking (stop_reason=max_tokens). Giá trị này ghi đè max_tokens của request trên đường Anthropic. Không vượt quá giới hạn output thực tế của model/gateway kẻo bị lỗi 400. Để trống để dùng mặc định 8192."
   },
   "sessionManager": {
     "title": "Quản lý Session",
@@ -996,7 +1019,9 @@
     "messageCopied": "Đã copy tin nhắn",
     "conversationHistory": "Lịch sử hội thoại",
     "expandContent": "Mở rộng toàn bộ nội dung",
-    "collapseContent": "Thu gọn"
+    "collapseContent": "Thu gọn",
+    "piRelativeSessionDir": "sessionDir của Pi là đường dẫn tương đối theo thư mục khởi chạy Pi, nên trình duyệt toàn cục không thể liệt kê an toàn. Hãy đặt sessionDir tuyệt đối để duyệt tất cả session của Pi tại đây:",
+    "piDiscoveryUnavailable": "Không thể kiểm tra session của Pi: {{error}}"
   },
   "console": {
     "providerSwitchReceived": "Đã nhận sự kiện chuyển provider:",
@@ -1079,7 +1104,9 @@
       "fenno": "Fenno.ai là API relay ổn định, hiệu quả, cho phép truy cập nhiều model phổ biến. Ưu đãi riêng cho CC Switch: đăng ký qua link này gói Coding Plan ¥9.9 trị giá $150 credit!",
       "zetaapi": "ZetaAPI cung cấp model thật, không bị giảm chất lượng, với giá chỉ từ 35% giá chính thức. Ưu đãi riêng cho CC Switch: đăng ký qua link này và dùng mã khuyến mãi CC-SWITCH để giảm 10% lần nạp tiền đầu tiên!",
       "teamorouter": "TeamoRouter là gateway LLM Agentic cấp doanh nghiệp với giá giảm tới 90%. Có ưu đãi riêng cho người dùng CC Switch: đăng ký qua link này với tư cách người dùng mới để giảm 10% lần nạp tiền đầu tiên!",
-      "xycai": "XycAi là nền tảng token cấp doanh nghiệp: truy cập một chạm tới 200+ model toàn cầu, tự động bồi thường SLA và hoàn 100% cho các khoản phí cache bất thường!"
+      "xycai": "XycAi là nền tảng token cấp doanh nghiệp: truy cập một chạm tới 200+ model toàn cầu, tự động bồi thường SLA và hoàn 100% cho các khoản phí cache bất thường!",
+      "ppio": "PPIO là nhà cung cấp Agentic Cloud độc lập hàng đầu tại Trung Quốc, phục vụ mọi model mã nguồn mở flagship chỉ với một API key duy nhất. Đăng ký qua liên kết này và hoàn tất xác minh danh tính để nhận voucher tín dụng ¥10.",
+      "9527code": "9527 CODE là nền tảng relay AI cấp doanh nghiệp, đầy đủ tính năng, mang lại relay nhanh và ổn định cho Claude Code, Codex và các model phổ biến khác. Một năm hoạt động liên tục, độ ổn định dịch vụ 99.9%, hỗ trợ kỹ thuật 7×24. Người dùng mới có thể liên hệ hỗ trợ để nhận credit dùng thử, hoàn tiền giới thiệu không giới hạn!"
     },
     "presets": {
       "ucloud": "Compshare",
@@ -1229,7 +1256,12 @@
     "deploymentType": "Loại triển khai GitHub",
     "deploymentGitHubCom": "GitHub.com",
     "deploymentEnterprise": "GitHub Enterprise Server",
-    "enterpriseDomainPlaceholder": "ví dụ: company.ghe.com"
+    "enterpriseDomainPlaceholder": "ví dụ: company.ghe.com",
+    "githubAccount": "Tài khoản GitHub",
+    "manageAccounts": "Quản lý tài khoản",
+    "statusLoading": "Đang tải trạng thái tài khoản...",
+    "statusUnavailable": "Không có trạng thái",
+    "statusLoadFailed": "Không thể tải trạng thái tài khoản GitHub Copilot. Vui lòng thử lại."
   },
   "codexOauth": {
     "authStatus": "Trạng thái xác thực",
@@ -1252,7 +1284,24 @@
     "retry": "Thử lại",
     "copyCode": "Copy mã",
     "fastMode": "Chế độ FAST",
-    "fastModeDescription": "Gửi service_tier=\"priority\" để giảm độ trễ. Mặc định tắt — bật lên sẽ tiêu tốn hạn mức ChatGPT nhanh hơn."
+    "fastModeDescription": "Gửi service_tier=\"priority\" để giảm độ trễ. Mặc định tắt — bật lên sẽ tiêu tốn hạn mức ChatGPT nhanh hơn.",
+    "statusLoading": "Đang tải trạng thái tài khoản...",
+    "statusUnavailable": "Không có trạng thái",
+    "statusLoadFailed": "Không thể tải trạng thái tài khoản ChatGPT. Vui lòng thử lại.",
+    "chatgptAccount": "Tài khoản ChatGPT",
+    "accountToUse": "Tài khoản sử dụng",
+    "signInMethod": "Phương thức đăng nhập",
+    "manageAccounts": "Quản lý tài khoản",
+    "officialAccountPlaceholder": "Chọn phương thức đăng nhập",
+    "addOrManageAccounts": "Thêm hoặc quản lý tài khoản ChatGPT…",
+    "explicitSelectionRequired": "Chọn phương thức đăng nhập",
+    "noneOptionLabel": "Theo đăng nhập Codex",
+    "reauthTitle": "Một số tài khoản cần đăng nhập lại",
+    "reauthDescription": "Để khớp với hành vi đăng nhập qua trình duyệt, các tài khoản này cần đăng nhập lại để khôi phục thông tin đăng nhập bắt buộc (id_token). Sau khi xác thực lại có thể dùng cho liên kết được quản lý.",
+    "reauthBadge": "Cần đăng nhập lại",
+    "reauthLogin": "Đăng nhập lại",
+    "reauthSelectHint": "Tài khoản này cần đăng nhập lại để bật liên kết được quản lý.",
+    "reauthNow": "Đăng nhập lại ngay"
   },
   "xaiOauth": {
     "authStatus": "Xác thực xAI OAuth",
@@ -1277,7 +1326,8 @@
   },
   "managedAuth": {
     "selectedAccountNeedsReauth": "Tài khoản đã liên kết bị thiếu hoặc cần đăng nhập lại",
-    "selectedAccountUnavailable": "Tài khoản đã liên kết bị thiếu hoặc cần đăng nhập lại. Hãy chọn tài khoản khác."
+    "selectedAccountUnavailable": "Tài khoản đã liên kết bị thiếu hoặc cần đăng nhập lại. Hãy chọn tài khoản khác.",
+    "accountRemoved": "Đã xóa tài khoản"
   },
   "endpointTest": {
     "title": "Quản lý API Endpoint",
@@ -1340,7 +1390,6 @@
     "editCommonConfig": "Sửa Common Config",
     "editCommonConfigTitle": "Sửa Codex Common Config Snippet",
     "commonConfigHint": "Snippet này sẽ được nối vào cuối config.toml khi tích 'Áp dụng Common Config'",
-    "enableGoalMode": "Bật Goal mode",
     "enableRemoteCompaction": "Bật remote compaction",
     "remoteCompactionHint": "Khi bật, tên mục model_providers đang hoạt động sẽ được ghi là OpenAI để Codex có thể thử remote compaction.",
     "apiUrlLabel": "URL Request API",
@@ -1402,7 +1451,13 @@
     "reasoningGroupTitle": "Khả năng Reasoning",
     "reasoningSectionHint": "Provider có sẵn được cấu hình tự động; provider tùy chỉnh được suy luận từ tên/URL. Chỉ ghi đè thủ công khi tự động nhận diện sai.",
     "advancedSectionHint": "Bao gồm định dạng upstream, model mapping, ghi đè reasoning và User-Agent tùy chỉnh. Provider dùng giao thức Chat Completions cần bật routing takeover.",
-    "noCommonConfigToApply": "Đoạn config chung trống hoặc không có gì để ghi"
+    "noCommonConfigToApply": "Đoạn config chung trống hoặc không có gì để ghi",
+    "catalogColumnReasoning": "Mức Reasoning",
+    "reasoningLevelsNotSet": "Chưa đặt",
+    "reasoningLevelsSearch": "Tìm mức reasoning...",
+    "reasoningLevelsEmpty": "Không có mức nào",
+    "defaultReasoningLevelLabel": "Mức mặc định",
+    "defaultReasoningLevelPlaceholder": "Tự động"
   },
   "geminiConfig": {
     "envFile": "Biến môi trường (.env)",
@@ -1541,7 +1596,8 @@
       "codex": "Codex",
       "gemini": "Gemini",
       "opencode": "OpenCode",
-      "grokbuild": "Grok Build"
+      "grokbuild": "Grok Build",
+      "pi": "Pi"
     },
     "rawInputLabel": "Raw",
     "rebuildCodex": {
@@ -1688,7 +1744,14 @@
       "syncNow": "Đồng bộ ngay"
     },
     "cacheReadCostPerMillion": "Chi phí Cache Read (trên một triệu token, USD)",
-    "cacheCreationCostPerMillion": "Chi phí Cache Write (trên một triệu token, USD)"
+    "cacheCreationCostPerMillion": "Chi phí Cache Write (trên một triệu token, USD)",
+    "sessionSync": {
+      "title": "Tự động quét log Session",
+      "description": "Định kỳ quét log session cục bộ của từng client để theo dõi mức sử dụng; khi tắt, log chỉ được quét khi đồng bộ thủ công",
+      "syncNow": "Đồng bộ ngay",
+      "syncCompleted": "Đồng bộ hoàn tất: đã nhập {{imported}}, đã quét {{files}} file, {{errors}} lỗi",
+      "syncFailed": "Đồng bộ usage từ session thất bại: {{error}}"
+    }
   },
   "usageScript": {
     "title": "Cấu hình truy vấn usage",
@@ -2047,7 +2110,8 @@
     "applySuccess": "Đã áp dụng dự án",
     "applyFailed": "Áp dụng dự án thất bại: {{detail}}",
     "applyWarnings": "Đã áp dụng dự án với {{warningCount}} cảnh báo:\n{{details}}",
-    "clearSuccess": "Đã chuyển sang không dùng dự án"
+    "clearSuccess": "Đã chuyển sang không dùng dự án",
+    "switcherAriaLabel": "Dự án: {{name}}"
   },
   "workspace": {
     "title": "File Workspace",
@@ -2458,7 +2522,9 @@
       "successSingle": "Đã cài đặt skill {{name}}",
       "successMultiple": "Đã cài đặt thành công {{count}} skill",
       "noSkillsFound": "Không tìm thấy skill nào trong file ZIP (cần file SKILL.md)"
-    }
+    },
+    "uninstallPiPreserved": "Không thể xác minh bản sao của Pi do CC Switch quản lý nên đã giữ nguyên: {{path}}",
+    "uninstallPiCleanupIncomplete": "Không thể hoàn tất dọn dẹp Pi. Vui lòng kiểm tra thủ công thư mục Skills của Pi để tìm bản sao còn sót lại."
   },
   "deeplink": {
     "confirmImport": "Xác nhận nhập Provider",
@@ -2704,7 +2770,8 @@
         "active": "{{appLabel}} đang routing - {{address}}:{{port}}\nChuyển provider để hot switching",
         "broken": "{{appLabel}} đang routing, nhưng dịch vụ routing không chạy",
         "inactive": "Route request của {{appLabel}} qua routing nội bộ"
-      }
+      },
+      "ariaLabel": "Routing cục bộ {{appLabel}}"
     },
     "failover": {
       "proxyRequired": "Phải khởi động dịch vụ routing để cấu hình failover",
